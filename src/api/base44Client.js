@@ -689,6 +689,27 @@ export const base44 = {
     Core: {
       async UploadPublicFile({ file }) {
         if (!file) throw new Error("No file provided");
+
+        // 1. Free-tier Cloudinary unsigned upload (images & short videos)
+        const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+        const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "bajaverse_uploads";
+        if (cloudName && uploadPreset) {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("upload_preset", uploadPreset);
+          const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
+            method: "POST",
+            body: formData,
+          });
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData?.error?.message || "Cloudinary upload failed");
+          }
+          const data = await res.json();
+          return { file_url: data.secure_url };
+        }
+
+        // 2. Firebase Storage (if Blaze plan & Storage enabled)
         if (isFirebaseConfigured && storage) {
           try {
             const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -700,6 +721,8 @@ export const base44 = {
             /* Fallback to Data URL if Storage is not enabled or rules block upload */
           }
         }
+
+        // 3. Local Data URL fallback
         const dataUrl = await readFileAsDataUrl(file);
         return { file_url: dataUrl };
       },
