@@ -1,6 +1,9 @@
 [build]
   command = "npm run build"
   publish = "dist"
+  # Skip the build (saves free-plan minutes) when only docs/config-only files changed.
+  # Exit code 0 = skip build, 1 = run build.
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ':(exclude)*.md' ':(exclude).gitignore' ':(exclude).env.example'"
 
 [[redirects]]
   from = "/*"
